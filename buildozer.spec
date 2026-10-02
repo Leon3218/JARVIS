@@ -300,8 +300,8 @@ android.archs = arm64-v8a
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
 p4a.branch = master
-android.api = 33
-android.ndk = 25b
+android.api = 36
+android.ndk = 28b
 p4a.commit = 957a3e5
 # (str) XML file for custom backup rules (see official auto backup documentation)
 # android.backup_rules =
@@ -316,7 +316,7 @@ p4a.commit = 957a3e5
 # android.no-byte-compile-python = False
 
 # (str) The format used to package the app for release mode (aab or apk or aar).
-# android.release_artifact = aab
+android.release_artifact = aab
 
 # (str) The format used to package the app for debug mode (apk or aar).
 android.debug_artifact = apk
