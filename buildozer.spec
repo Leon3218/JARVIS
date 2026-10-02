@@ -5,7 +5,7 @@ package.domain = org.jarvis
 source.dir = .
 source.include_exts = py,png,jpg,kv,json,txt
 version = 6.0
-requirements = python3,kivy
+requirements = python3,kivy,charset-normalizer==2.1.1
 orientation = portrait
 fullscreen = 0
 home_app = True
