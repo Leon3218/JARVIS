@@ -48,7 +48,7 @@ jobs:
 
       - name: Build JARVIS
         run: |
-          buildozer android release
+          buildozer android debug
 
       - name: Show generated files
         run: |
@@ -60,7 +60,7 @@ jobs:
         with:
           name: JARVIS-AAB
           path: bin/*.aab
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Upload APK
