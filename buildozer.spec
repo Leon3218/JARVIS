@@ -300,8 +300,8 @@ android.archs = arm64-v8a
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
 p4a.branch = master
-android.api = 36
-android.ndk = 28b
+android.api = 33
+android.ndk = 25b
 p4a.commit = 957a3e5
 # (str) XML file for custom backup rules (see official auto backup documentation)
 # android.backup_rules =
