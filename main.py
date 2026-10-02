@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-JARVIS V6 DEFINITIVO
+JARVIS V7.1 DEFINITIVO
 Android/Kivy HUD inspired by the supplied 16-panel JARVIS reference.
 No API key is embedded in the project.
 """
@@ -33,9 +33,12 @@ try:
     PYJNIUS = True
 except Exception:
     PYJNIUS = False
+    PythonJavaClass = object
+    def java_method(_signature):
+        return lambda fn: fn
 
 APP_NAME = "JARVIS"
-VERSION = "6.0"
+VERSION = "7.1"
 BG = (0.003, 0.008, 0.016, 1)
 PANEL = (0.006, 0.025, 0.042, 0.98)
 CYAN = (0.04, 0.82, 1.0, 1)
@@ -148,7 +151,7 @@ class Android:
         return False
 
     @staticmethod
-    def intent(action, data=None):
+    def intent(action, data=None, mime=None, category=None):
         if not PYJNIUS:
             return False
         try:
@@ -157,6 +160,10 @@ class Android:
             if data:
                 U = autoclass("android.net.Uri")
                 i.setData(U.parse(data))
+            if mime:
+                i.setType(mime)
+            if category:
+                i.addCategory(category)
             Android.activity().startActivity(i)
             return True
         except Exception:
@@ -182,6 +189,10 @@ class Android:
             return False
         try:
             a = Android.activity()
+            camera_perm = "android.permission.CAMERA"
+            if int(a.checkSelfPermission(camera_perm)) != 0:
+                a.requestPermissions([camera_perm], 7002)
+                return False
             cm = a.getSystemService("camera")
             CC = autoclass("android.hardware.camera2.CameraCharacteristics")
             CM = autoclass("android.hardware.camera2.CameraMetadata")
@@ -211,6 +222,43 @@ class Android:
             return total, avail
         except Exception:
             return None
+
+    @staticmethod
+    def share_text(text):
+        if not PYJNIUS:
+            return False
+        try:
+            I = autoclass("android.content.Intent")
+            i = I(I.ACTION_SEND)
+            i.setType("text/plain")
+            i.putExtra(I.EXTRA_TEXT, str(text))
+            Android.activity().startActivity(I.createChooser(i, "Compartilhar com JARVIS"))
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    def dial(number=""):
+        data = "tel:" + urllib.parse.quote(str(number).strip()) if str(number).strip() else None
+        return Android.intent("android.intent.action.DIAL", data)
+
+    @staticmethod
+    def sms(number=""):
+        data = "smsto:" + urllib.parse.quote(str(number).strip()) if str(number).strip() else "smsto:"
+        return Android.intent("android.intent.action.SENDTO", data)
+
+    @staticmethod
+    def app_details():
+        if not PYJNIUS:
+            return False
+        try:
+            a = Android.activity()
+            I = autoclass("android.content.Intent")
+            U = autoclass("android.net.Uri")
+            a.startActivity(I("android.settings.APPLICATION_DETAILS_SETTINGS", U.parse("package:" + str(a.getPackageName()))))
+            return True
+        except Exception:
+            return False
 
 class SpeechListener(PythonJavaClass):
     __javainterfaces__ = ["android/speech/RecognitionListener"]
@@ -453,7 +501,7 @@ class SectionScreen(Screen):
         return Label(text=self.title_text, color=WHITE)
 
 class JARVIS(App):
-    title = "JARVIS V6"
+    title = "JARVIS V7.1"
     def build(self):
         Window.clearcolor = BG
         Window.softinput_mode = "below_target"
@@ -482,6 +530,7 @@ class JARVIS(App):
             ("voice","ASSISTENTE DE VOZ","ESCUTA / FALA",self.voice_content),
             ("files","ARQUIVOS","DOCUMENTOS / ARMAZENAMENTO",self.files_content),
             ("night","MODO NOTURNO","HUD / CONFORTO VISUAL",self.night_content),
+            ("tools","FERRAMENTAS","AÇÕES RÁPIDAS",self.tools_content),
         ]
         for name,title,sub,fn in specs:
             screen = SectionScreen(name,title,sub,name=name)
@@ -509,7 +558,7 @@ class JARVIS(App):
             ("⌂","home"),("◈","system"),("▦","apps"),("⌕","internet"),
             ("♫","media"),("♙","contacts"),("⌖","maps"),("⚙","settings"),
             ("▣","security"),("◉","camera"),("▤","calendar"),("☁","weather"),
-            ("✓","tasks"),("♟","voice"),("□","files"),("☾","night")
+            ("✓","tasks"),("♟","voice"),("□","files"),("☾","night"),("✦","tools")
         ]
         s = BoxLayout(orientation="vertical", size_hint_x=None, width=dp(42), spacing=dp(3))
         for icon,name in items:
@@ -562,29 +611,68 @@ class JARVIS(App):
 
     # 1
     def home_content(self):
+        modules = [
+            ("⌂", "SISTEMA", "Monitor", "system"), ("▦", "APLICATIVOS", "Apps", "apps"),
+            ("⌕", "INTERNET", "Navegador", "internet"), ("♫", "MÍDIA", "Player", "media"),
+            ("♙", "CONTATOS", "Comunicação", "contacts"), ("⌖", "MAPAS", "GPS / Rotas", "maps"),
+            ("⚙", "CONFIGURAÇÕES", "Android / IA", "settings"), ("▣", "SEGURANÇA", "Privacidade", "security"),
+            ("◉", "CÂMERA", "Foto / Vídeo", "camera"), ("▤", "CALENDÁRIO", "Agenda", "calendar"),
+            ("☁", "CLIMA", "Previsão", "weather"), ("✓", "TAREFAS", "Lembretes", "tasks"),
+            ("♟", "VOZ", "Escutar / Falar", "voice"), ("□", "ARQUIVOS", "Documentos", "files"),
+            ("☾", "NOTURNO", "HUD", "night"), ("✦", "FERRAMENTAS", "Ações rápidas", "tools"),
+        ]
         root = BoxLayout(orientation="vertical", spacing=dp(6))
-        top = BoxLayout(size_hint_y=None, height=dp(150), spacing=dp(6))
-        left = self.card("JARVIS", "Olá. Eu sou o JARVIS.\nSeu assistente inteligente para Android.\n\nDiga ou digite um comando.")
-        reactor_box = BoxLayout()
-        reactor_box.add_widget(Reactor())
-        top.add_widget(left); top.add_widget(reactor_box)
-        root.add_widget(top)
-        self.home_wave = Wave(size_hint_y=None, height=dp(55)); root.add_widget(self.home_wave)
-        self.home_log = Label(text="Sistema pronto. Aguardando comando...", color=WHITE, font_size=dp(11), halign="left", valign="top")
-        root.add_widget(self.card("CONSOLE JARVIS", self.home_log.text))
-        inp = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(5))
-        self.command = TextInput(hint_text="Fale ou digite um comando...", multiline=False, font_size=dp(12),
-                                 background_normal="", background_color=(.01,.05,.08,1), foreground_color=WHITE)
+        status = BoxLayout(size_hint_y=None, height=dp(28), spacing=dp(6))
+        self.home_clock = Label(text=datetime.now().strftime("%H:%M"), color=CYAN, font_size=dp(12), bold=True, size_hint_x=None, width=dp(58))
+        self.home_status = Label(text="JARVIS ONLINE  •  LAUNCHER", color=DIM, font_size=dp(8), halign="left")
+        self.home_battery = Label(text="BAT --%", color=WHITE, font_size=dp(9), size_hint_x=None, width=dp(58))
+        status.add_widget(self.home_clock); status.add_widget(self.home_status); status.add_widget(self.home_battery); root.add_widget(status)
+
+        hero = BoxLayout(size_hint_y=None, height=dp(125), spacing=dp(6))
+        intro = self.card("JARVIS", "Olá. Eu sou o JARVIS.\nLauncher inteligente do seu Android.\n\nToque em um setor ou fale um comando.")
+        reactor_box = BoxLayout(); reactor_box.add_widget(Reactor())
+        hero.add_widget(intro); hero.add_widget(reactor_box); root.add_widget(hero)
+
+        grid = GridLayout(cols=4, spacing=dp(4), size_hint_y=None, padding=dp(1))
+        grid.bind(minimum_height=grid.setter("height"))
+        for icon, title, sub, name in modules:
+            b = JButton(text=f"{icon}\n{title}\n{sub}", font_size=dp(8))
+            b.bind(on_release=lambda _, n=name: self.go(n))
+            grid.add_widget(b)
+        sv = ScrollView(do_scroll_x=False, bar_width=dp(2)); sv.add_widget(grid); root.add_widget(sv)
+
+        self.home_wave = Wave(size_hint_y=None, height=dp(34)); root.add_widget(self.home_wave)
+        self.home_log = Label(text="Sistema pronto. Aguardando comando...", color=WHITE, font_size=dp(9), halign="left", valign="middle", size_hint_y=None, height=dp(28))
+        root.add_widget(self.home_log)
+        inp = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(4))
+        self.command = TextInput(hint_text="Fale ou digite um comando...", multiline=False, font_size=dp(10), background_normal="", background_color=(.01,.05,.08,1), foreground_color=WHITE)
         self.command.bind(on_text_validate=lambda *_: self.send())
-        mic = JButton(text="🎙 OUVIR", size_hint_x=None, width=dp(82)); mic.bind(on_release=lambda *_: self.start_voice())
-        send = JButton(text="ENVIAR", size_hint_x=None, width=dp(78)); send.bind(on_release=lambda *_: self.send())
-        inp.add_widget(mic); inp.add_widget(self.command); inp.add_widget(send)
-        root.add_widget(inp)
-        quick = GridLayout(cols=4, spacing=dp(4), size_hint_y=None, height=dp(42))
-        for t,cmd in [("SISTEMA","sistema"),("APLICATIVOS","aplicativos"),("HORA","hora"),("AJUDA","ajuda")]:
-            b=JButton(text=t); b.bind(on_release=lambda _,c=cmd:self.process(c)); quick.add_widget(b)
-        root.add_widget(quick)
+        mic = JButton(text="🎙", size_hint_x=None, width=dp(44)); mic.bind(on_release=lambda *_: self.start_voice())
+        send = JButton(text="➤", size_hint_x=None, width=dp(44)); send.bind(on_release=lambda *_: self.send())
+        inp.add_widget(mic); inp.add_widget(self.command); inp.add_widget(send); root.add_widget(inp)
         return root
+
+    def tools_content(self):
+        return self.content_grid([
+            self.card("LANTERNA", "Liga ou desliga a lanterna traseira.", ("ALTERNAR", lambda: self.toggle_flash())),
+            self.card("TELEFONE", "Abre o discador do Android.", ("ABRIR", lambda: Android.dial())),
+            self.card("MENSAGEM", "Abre o aplicativo de mensagens.", ("ABRIR", lambda: Android.sms())),
+            self.card("COMPARTILHAR", "Compartilha uma mensagem do JARVIS.", ("COMPARTILHAR", lambda: Android.share_text("Enviado pelo JARVIS."))),
+            self.card("CONFIGURAÇÕES DO APP", "Permissões e informações do JARVIS.", ("ABRIR", lambda: Android.app_details())),
+            self.card("WI-FI", "Abra as configurações de Wi-Fi.", ("ABRIR", lambda: Android.intent("android.settings.WIFI_SETTINGS"))),
+            self.card("BLUETOOTH", "Abra as configurações de Bluetooth.", ("ABRIR", lambda: Android.intent("android.settings.BLUETOOTH_SETTINGS"))),
+            self.card("TELA", "Brilho, rotação e configurações de tela.", ("ABRIR", lambda: Android.intent("android.settings.DISPLAY_SETTINGS"))),
+        ],2)
+
+    def toggle_flash(self):
+        self._flash_state = not getattr(self, "_flash_state", False)
+        ok = Android.flashlight(self._flash_state)
+        if not ok:
+            self._flash_state = not self._flash_state
+        if ok:
+            self.notify("JARVIS: "+("Lanterna ligada." if self._flash_state else "Lanterna desligada."))
+        else:
+            self.notify("JARVIS: não consegui controlar a lanterna.")
 
     # 2
     def system_content(self):
@@ -594,7 +682,7 @@ class JARVIS(App):
         cards = [
             self.card("DISPOSITIVO", "Android\nArquitetura: arm64-v8a\nBateria: %s%%" % (b if b is not None else "--")),
             self.card("MEMÓRIA", "RAM total: %s GB\nRAM livre: %s GB" % (total,avail)),
-            self.card("DIAGNÓSTICO", "JARVIS V6\nMotor local ativo\nConector de IA opcional"),
+            self.card("DIAGNÓSTICO", "JARVIS V7.1\nMotor local ativo\nConector de IA opcional"),
             self.card("AÇÕES", "Configurações do Android", ("ABRIR CONFIGURAÇÕES", lambda: Android.intent("android.settings.SETTINGS")))
         ]
         return self.content_grid(cards,2)
@@ -651,7 +739,7 @@ class JARVIS(App):
     # 6
     def contacts_content(self):
         return self.content_grid([
-            self.card("CONTATOS","Gerencie os contatos do Android.",("ABRIR CONTATOS",lambda:Android.intent("android.intent.action.VIEW", "content://contacts/people"))),
+            self.card("CONTATOS","Gerencie os contatos do Android.",("ABRIR CONTATOS",lambda:Android.intent("android.intent.action.VIEW", "content://contacts/people", mime="vnd.android.cursor.dir/contact"))),
             self.card("LIGAR","Abra o discador.",("ABRIR TELEFONE",lambda:Android.intent("android.intent.action.DIAL"))),
             self.card("MENSAGEM","Abra o app de SMS.",("ABRIR MENSAGENS",lambda:Android.intent("android.intent.action.MAIN"))),
             self.card("WHATSAPP","Abra suas conversas.",("ABRIR WHATSAPP",lambda:self.open_app("com.whatsapp","WhatsApp")))
@@ -781,9 +869,9 @@ class JARVIS(App):
     # 15
     def files_content(self):
         return self.content_grid([
-            self.card("DOCUMENTOS","Abra o seletor de documentos do Android.",("ABRIR ARQUIVOS",lambda:Android.intent("android.intent.action.OPEN_DOCUMENT"))),
-            self.card("IMAGENS","Selecione uma imagem.",("ABRIR IMAGENS",lambda:Android.intent("android.intent.action.OPEN_DOCUMENT"))),
-            self.card("DOWNLOADS","Acesse o gerenciador de arquivos.",("ABRIR ARQUIVOS",lambda:Android.intent("android.intent.action.OPEN_DOCUMENT"))),
+            self.card("DOCUMENTOS","Abra o seletor de documentos do Android.",("ABRIR ARQUIVOS",lambda:Android.intent("android.intent.action.OPEN_DOCUMENT", mime="*/*", category="android.intent.category.OPENABLE"))),
+            self.card("IMAGENS","Selecione uma imagem.",("ABRIR IMAGENS",lambda:Android.intent("android.intent.action.OPEN_DOCUMENT", mime="*/*", category="android.intent.category.OPENABLE"))),
+            self.card("DOWNLOADS","Acesse o gerenciador de arquivos.",("ABRIR ARQUIVOS",lambda:Android.intent("android.intent.action.OPEN_DOCUMENT", mime="*/*", category="android.intent.category.OPENABLE"))),
             self.card("ARMAZENAMENTO","O Android controla o acesso aos arquivos.",("CONFIGURAÇÕES",lambda:Android.intent("android.settings.INTERNAL_STORAGE_SETTINGS")))
         ],2)
 
@@ -884,7 +972,14 @@ class JARVIS(App):
         if self.sm.current=="voice":self.rebuild("voice")
 
     def refresh_top(self,dt):
-        pass
+        try:
+            if hasattr(self, "home_clock"):
+                self.home_clock.text = datetime.now().strftime("%H:%M")
+            if hasattr(self, "home_battery"):
+                b = Android.battery()
+                self.home_battery.text = "BAT %s%%" % b if b is not None else "BAT --%"
+        except Exception:
+            pass
 
     def on_stop(self):
         try:self.voice.stop();self.executor.shutdown(wait=False);self.db.close()

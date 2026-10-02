@@ -1,0 +1,20 @@
+JARVIS V7 — Launcher / HUD
+
+Base: JARVIS V6 Launcher.
+
+Incluído:
+- Launcher Android via android.home_app = True.
+- Painel inicial HUD com 16 setores da referência.
+- Console de comandos por texto e voz.
+- TTS e reconhecimento de voz do Android.
+- Bateria e RAM.
+- Aplicativos, navegador, mídia, contatos, mapas, configurações, segurança, câmera, calendário, clima, tarefas, voz, arquivos e modo noturno.
+- Ferramentas rápidas: lanterna, telefone, SMS, compartilhar, Wi-Fi, Bluetooth, tela e configurações do próprio app.
+- Conector opcional de IA compatível com OpenAI, com chave armazenada somente no armazenamento privado do app.
+
+Build:
+- GitHub Actions usando ArtemSBulgakov/buildozer-action@v1, que executa o Buildozer no container oficial.
+- Primeiro alvo: APK debug para instalação e teste.
+
+Observação:
+Ser launcher não substitui o Android nem concede privilégios de sistema. O JARVIS usa somente APIs e permissões permitidas pelo Android.
