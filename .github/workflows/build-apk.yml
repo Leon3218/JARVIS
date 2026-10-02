@@ -1,19 +1,24 @@
-name: Build JARVIS APK
+name: Build JARVIS Android
 
 on:
   workflow_dispatch:
   push:
-    branches: ["main", "master"]
+    branches:
+      - main
+      - master
 
 jobs:
   build-android:
-    name: Build Android APK
+    name: Build JARVIS Android
     runs-on: ubuntu-latest
 
     env:
-      PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: 0
+      PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
       - name: Setup Python
         uses: actions/setup-python@v7
         with:
@@ -25,26 +30,43 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
-      - name: Checkout
-        uses: actions/checkout@v7
-
       - name: Install Linux dependencies
         run: |
           sudo apt update
-          sudo apt -y install automake libltdl-dev
+          sudo apt install -y \
+            automake \
+            libltdl-dev \
+            libffi-dev \
+            libssl-dev \
+            zip \
+            unzip
 
       - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade buildozer
 
-      - name: Build APK
-        run: buildozer android debug
+      - name: Build JARVIS
+        run: |
+          buildozer android release
+
+      - name: Show generated files
+        run: |
+          echo "Arquivos Android gerados:"
+          find . -type f \( -name "*.aab" -o -name "*.apk" \) -print
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-AAB
+          path: bin/*.aab
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: JARVIS-APK
           path: bin/*.apk
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 7
