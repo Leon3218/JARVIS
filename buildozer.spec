@@ -21,4 +21,5 @@ android.debug_artifact = apk
 android.release_artifact = aab
 
 # Use Buildozer's current python-for-android unless a later compatibility pin is required.
-p4a.branch = master
+p4a.branch = develop
+p4a.commit = d2ee8c5
