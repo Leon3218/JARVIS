@@ -15,17 +15,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build APK with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
-        with:
-          command: buildozer android debug
-          buildozer_version: stable
+      - name: Prepare Buildozer cache
+        run: mkdir -p "$HOME/.buildozer"
+
+      - name: Build APK with official Buildozer Docker
+        run: |
+          docker pull ghcr.io/kivy/buildozer:latest
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE":/home/user/hostcwd \
+            --volume "$HOME/.buildozer":/home/user/.buildozer \
+            ghcr.io/kivy/buildozer:latest \
+            android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: JARVIS-APK
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: bin/*.apk
           if-no-files-found: error
           retention-days: 7
